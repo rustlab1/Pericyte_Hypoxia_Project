@@ -1,0 +1,249 @@
+---
+title: "HypoxiaRNAseq_analysis"
+output: html_document
+date: "2025-08-01"
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(DESeq2)
+  library(ggrepel)
+  library(ggrastr)
+  library(tibble)
+})
+```
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "..")
+```
+
+
+```{r}
+# Set working directory
+
+
+# Read the count matrix, skip the first commented line
+counts <- read.delim("data_RNAcounts/final_counts_symbols.tsv", comment.char = "#", row.names = 1)
+
+
+
+# Check the structure
+dim(counts)
+colnames(counts)
+summary(counts)
+
+```
+
+
+```{r}
+# Metadata: Hypoxia vs Normoxia (reference = Normoxia)
+sample_info <- data.frame(
+  row.names = colnames(counts),
+  condition = c("Hypoxia", "Hypoxia", "Normoxia", "Normoxia")
+) %>%
+  mutate(condition = factor(condition, levels = c("Normoxia","Hypoxia")))
+
+# Construct object and prefilter low counts
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = sample_info,
+                              design = ~ condition)
+dds <- dds[rowSums(counts(dds)) > 10, ]
+
+# Run DE analysis
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Quick summary and top rows
+summary(res)
+head(res[order(res$pvalue), ])
+
+# MA plot
+plotMA(res, main = "DESeq2 MA plot", ylim = c(-5, 5))
+
+```
+
+PCA 
+
+```{r}
+# Variance-stabilizing transform for ordination
+vsd <- vst(dds, blind = FALSE)
+
+# Get PCA data and variance explained
+pcaData <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+# Plot
+ggplot(pcaData, aes(PC1, PC2, color = condition)) +
+  geom_point(size = 3) +
+  xlab(paste0("PC1: ", percentVar[1], "%")) +
+  ylab(paste0("PC2: ", percentVar[2], "%")) +
+  ggtitle("PCA: Hypoxia vs Normoxia") +
+  theme_minimal()
+```
+
+Volcano plot
+
+```{r}
+
+# Tidy results for plotting
+df_results <- as.data.frame(res) %>%
+  rownames_to_column("SYMBOL") %>%
+  mutate(
+    log2FoldChange = pmax(pmin(log2FoldChange, 10), -10),     # clamp extremes for display
+    padj = ifelse(is.na(padj) | padj < 1e-10, 1e-10, padj),   # floor tiny/NA p-adjust
+    sig = case_when(                                          
+      log2FoldChange > 2 & padj < 0.05 ~ "possig",
+      log2FoldChange < -2 & padj < 0.05 ~ "negsig",
+      TRUE ~ "nonsig"
+    )
+  )
+
+# Base volcano
+PLOT_volcano <- ggplot(df_results, aes(x = log2FoldChange, y = -log10(padj))) +
+  rasterise(
+    geom_jitter(aes(color = sig, fill = sig),
+                width = 0.03, pch = 21, size = 3, alpha = 0.5, stroke = 0.1),
+    dpi = 600
+  ) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dotted") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dotted") +
+  scale_fill_manual(values = c("possig" = "#c51b8a", "negsig" = "#2b8cbe", "nonsig" = "#bdbdbd")) +
+  scale_color_manual(values = c("possig" = "#c51b8a", "negsig" = "#2b8cbe", "nonsig" = "#bdbdbd")) +
+  theme_light() +
+  ggtitle("Volcano: Hypoxia vs Normoxia")
+PLOT_volcano
+# Label a few extremes on each side
+df_top <- df_results %>% filter(log2FoldChange > 5)  %>% arrange(padj) %>% slice_head(n = 5)
+df_bot <- df_results %>% filter(log2FoldChange <= -5) %>% arrange(padj) %>% slice_head(n = 5)
+
+# ggsave("2_Volcano_all.pdf", PLOT_volcano2, width = 4, height = 4, useDingbats = FALSE)
+```
+
+```{r fig.height=2.5, fig.width=15}
+
+# Gene groups
+canonical_pericyte_markers <- c("ANPEP", "CALD1", "CSPG4", "PDGFRB")
+cell_adhesion_proteins     <- c("ADGRA2", "BCAM", "CADM4", "MCAM", "SMAGP")
+tight_junction_proteins    <- c("JAM3", "JCAD", "JUP", "DLG1", "TJP2")
+
+genes_of_interest <- tibble(
+  SYMBOL = c(canonical_pericyte_markers,
+             cell_adhesion_proteins,
+             tight_junction_proteins),
+  Category = c(rep("Pericyte Markers", length(canonical_pericyte_markers)),
+               rep("Cell Adhesion Proteins", length(cell_adhesion_proteins)),
+               rep("Tight Junction Proteins", length(tight_junction_proteins)))
+)
+
+# Use DESeq2-normalized counts for visualization
+norm_counts <- counts(dds, normalized = TRUE) %>% 
+  as.data.frame() %>% 
+  rownames_to_column("SYMBOL")
+
+# Long format for plotting
+long_data <- norm_counts %>%
+  semi_join(genes_of_interest, by = "SYMBOL") %>%
+  left_join(genes_of_interest, by = "SYMBOL") %>%
+  pivot_longer(cols = -c(SYMBOL, Category), names_to = "Sample", values_to = "Expression")
+
+# Barplot by category
+ggplot(long_data, aes(x = SYMBOL, y = Expression, fill = Sample)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ Category, scales = "free", nrow = 1) +
+  labs(title = "Expression of selected genes",
+       x = "Gene", y = "Normalized counts") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Grouped summary (Norm vs Hyp means ± SD)
+long_data_summary2 <- long_data %>%
+  mutate(Group = ifelse(Sample %in% c("Hyp1","Hyp2"), "Hyp", "Norm")) %>%
+  group_by(SYMBOL, Category, Group) %>%
+  summarise(Expression_mean = mean(Expression),
+            Expression_sd   = sd(Expression), .groups = "drop") %>%
+  mutate(Group = factor(Group, levels = c("Norm","Hyp")))
+
+ggplot(long_data_summary2, aes(x = Group, y = Expression_mean, fill = Group)) +
+  geom_errorbar(aes(ymin = Expression_mean - Expression_sd,
+                    ymax = Expression_mean + Expression_sd),
+                width = 0.2, position = position_dodge(0.8), color = "black") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.6) +
+  facet_wrap(Category ~ SYMBOL, scales = "free", nrow = 1) +
+  labs(title = "Normalized counts for selected genes",
+       x = NULL, y = "Mean normalized counts ± SD") +
+  scale_fill_manual(values = c("Hyp" = "#c51b8a", "Norm" = "#2b8cbe")) +
+  theme_classic(base_size = 12)
+```
+
+```{r}
+# How many genes are up/down by your volcano criteria?
+# Criteria: |log2FC| > 2 and padj < 0.05  (same as used to color the plot)
+lfc_thr  <- 2
+padj_thr <- 0.05
+
+summary_tbl <- df_results %>%
+  mutate(category = case_when(
+    log2FoldChange >  lfc_thr & padj < padj_thr ~ "upregulated",
+    log2FoldChange < -lfc_thr & padj < padj_thr ~ "downregulated",
+    TRUE ~ "nonsignificant"
+  )) %>%
+  dplyr::count(category, name = "n_genes") %>%
+  tidyr::complete(category = c("upregulated","downregulated","nonsignificant"),
+                  fill = list(n_genes = 0)) %>%
+  mutate(percentage = round(100 * n_genes / sum(n_genes), 2)) %>%
+  arrange(factor(category, levels = c("upregulated","downregulated","nonsignificant")))
+
+summary_tbl
+```
+```{r}
+# Optional: list top 10 upregulated genes (smallest padj)
+df_results %>%
+  filter(log2FoldChange > 2, padj < 0.05) %>%
+  arrange(padj) %>%
+  select(SYMBOL, log2FoldChange, padj) %>%
+  slice_head(n = 10)
+```
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(pheatmap)
+})
+
+```
+
+```{r}
+# --- What this chunk checks ---
+# - Library size: total reads per sample -> depth/balance
+# - Genes detected: genes with any counts -> library complexity
+# - Proportion zeros: sparsity -> potential under-sequencing or issues
+# - Percent mitochondrial: degradation/contamination proxy (MT- genes)
+
+stopifnot(exists("counts"))
+
+# 1) Library size (total counts per sample)
+libsize <- colSums(counts)
+
+# 2) Genes detected (non-zero counts per sample)
+ngenes_detected <- colSums(counts > 0)
+
+# 3) Proportion of zeros (sparsity per sample)
+prop_zero <- colMeans(counts == 0)
+
+
+# Tidy summary table
+qc_tbl <- tibble(
+  sample = colnames(counts),
+  library_size = libsize,
+  genes_detected = ngenes_detected,
+  prop_zero = round(prop_zero, 3)
+) %>% arrange(sample)
+
+qc_tbl
+# Optionally write to disk:
+# write.csv(qc_tbl, "counts/qc_sample_summary.csv", row.names = FALSE)
+
+```
+
+
