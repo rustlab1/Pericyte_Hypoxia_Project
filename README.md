@@ -1,50 +1,93 @@
-# Pericyte Hypoxia RNA-seq — Preprocessing & Analysis
+## Pericyte hypoxia RNA seq preprocessing and analysis
 
-This repository contains an end-to-end workflow for RNA-seq analysis of human iPSC-derived pericytes comparing **Hypoxia vs Normoxia** conditions.  
-It includes two main components:
+paper_title: Brain pericytes derived from human pluripotent stem cells retain vascular and phagocytic functions under hypoxia
+doi: 10.1101/2025.04.10.648232
+data_source: "GEO GSE304315; BioProject PRJNA1300358; SRA runs SRR34830030 to SRR34830045"
 
-1. **Preprocessing** (`workflow/preprocess.sh`)  
-   Downloads SRA runs, builds 4 sample FASTQs, performs QC, trimming, alignment, and gene-level counting.
 
-2. **Analysis** (`workflow/HypoxiaRNAseq_analysis.Rmd`)  
-   Performs differential expression analysis using DESeq2, generates PCA and volcano plots, and visualizes selected gene panels (as reported in the paper). 
+This repository provides an end to end workflow for RNA seq analysis of human iPSC derived pericytes comparing hypoxia and control.
+It includes two parts
 
----
+Preprocessing in shell
+downloads SRA runs, builds sample FASTQs, runs QC and trimming, aligns to GRCh38, and produces gene level counts
 
-## Data
+Analysis in R Markdown
+performs differential expression with DESeq2, PCA and volcano plots, a heatmap, and selected gene expression comparisons
 
-- **SRA BioProject:** [`PRJNA1300358`](https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA1300358) (Homo sapiens, single-end RNA-seq; 4 biological samples formed by concatenating 4 runs each)
-  - **Normoxia:** GSM9147330 (`SRR34830030–33`), GSM9147329 (`SRR34830034–37`)  
-  - **Hypoxia:** GSM9147328 (`SRR34830038–41`), GSM9147327 (`SRR34830042–45`)
+#1. Data sources
+Public GEO GSE304315 and BioProject PRJNA1300358 human iPSC derived pericyte single end RNA seq
 
-- **Reference files:**
-  - **Transcript annotation:** GENCODE v44 GTF  
-  - **Alignment index:** HISAT2 `grch38_tran`
+Groups and runs used
 
-**Related publication:**  
-[PMID: 40737487](https://pubmed.ncbi.nlm.nih.gov/40737487/)
+Hypoxia SRR34830038 SRR34830039 SRR34830040 SRR34830041 and SRR34830042 SRR34830043 SRR34830044 SRR34830045
 
----
+Normoxia SRR34830030 SRR34830031 SRR34830032 SRR34830033 and SRR34830034 SRR34830035 SRR34830036 SRR34830037
 
-## Directory Output
+Reference
 
-The preprocessing script creates a structured working directory `data_pre_processing/` containing:
+Genome GRCh38 HISAT2 grch38_tran index
 
-```
-raw/      # downloaded and processed SRA FASTQs  
-fastq/    # concatenated FASTQs (one per sample)  
-trimmed/  # adapter-trimmed reads  
-aligned/  # HISAT2-aligned BAMs  
-counts/   # gene-level count matrix  
-logs/     # logs from trimming, alignment, counting  
-qc/       # FastQC output  
-hisat2_index/  # reference index for alignment  
-```
+Annotation GENCODE v44 GTF
 
----
+#2. How to download
+Install the tools with conda and fetch FASTQs from SRA using prefetch and fasterq dump. See workflow scripts for exact commands.
 
-## Notes
+#3. Pre processing and subsampling
+No subsampling is applied by default. Raw FASTQs are used as is. The dataset includes hypoxia and normoxia pericyte samples.
+Quality control is performed with FastQC
 
-- You can skip raw FASTQ processing and go straight to analysis using `data_RNAcounts/final_counts_symbols.tsv`.
-- Compatible with macOS and Linux; no system-specific dependencies in the code beyond common bioinformatics tools.
-- Code to generate reproducible answers to questions are in a separate .rmd file under the workflow folder
+#4. How the workflow works
+The shell script executes the following steps. Save your script and run it from a terminal. It creates and uses ./data_pre_processing.
+
+Step 1 Quality control
+
+Purpose check base quality and GC content
+Tools FastQC and optional MultiQC
+Inputs FASTQs in fastq
+Outputs per sample HTML and zip in qc
+
+Step 2 Trimming
+
+Purpose remove adapters and low quality bases
+Tools Trimmomatic with TruSeq3 SE adapters
+Inputs FASTQs in fastq
+Outputs trimmed FASTQs in trimmed and trimming logs in logs
+
+Step 3 Reference setup
+
+Purpose obtain the GRCh38 HISAT2 transcriptome aware index
+Tools curl and tar
+Outputs index in hisat2_index/grch38_tran
+
+Step 4 Alignment
+
+Purpose align single end reads to GRCh38 and sort BAM
+Tools HISAT2 and samtools
+Inputs trimmed FASTQs in trimmed
+Outputs BAM and BAI in aligned plus logs in logs
+
+Step 5 Post alignment QC
+
+Purpose review mapping statistics
+Tools samtools
+
+Step 6 Quantification
+
+Purpose count reads per gene using the GENCODE GTF
+Tools featureCounts
+Inputs BAM files and GENCODE v44 GTF
+Outputs counts in counts and a final matrix data_pre_processing/counts/final_counts_symbols.tsv
+
+Step 7 Analysis
+
+Purpose differential expression and figures
+Tools R DESeq2 ggplot2 pheatmap
+Inputs featureCounts output and sample metadata
+Outputs PCA and volcano plots, QC tables, and selected gene comparisons
+
+In R
+
+run workflow/HypoxiaRNAseq_analysis_clean.Rmd to load data and perform the main analysis
+
+Notes
+You can skip raw FASTQ processing and start from the counts matrix if you already have one.
