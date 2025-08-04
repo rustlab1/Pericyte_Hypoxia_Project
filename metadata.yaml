@@ -5,14 +5,14 @@
 \margl1440\margr1440\vieww11520\viewh8400\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\f0\fs24 \cf0 project:\
-  id: Pericyte_Hypoxia_Project\
-  geo_accession: GSE304315\
-  organism: Homo sapiens\
-  layout: SE\
-  design:\
-    conditions: [normoxia, hypoxia]\
-    replicates: 2\
+\f0\fs24 \cf0 paper_title: Brain pericytes derived from human pluripotent stem cells retain vascular and phagocytic functions under hypoxia\
+doi: 10.1101/2025.04.10.648232\
+data_source: "GEO GSE304315; BioProject PRJNA1300358; SRA runs SRR34830030 to SRR34830045"\
+domain: rna_seq\
+ref_genome: GRCh38 (GENCODE v44)\
+tools: [fastqc 0.11.9, trimmomatic 0.39, hisat2 2.2.1, samtools 1.20, featureCounts 2.0.4]\
+estimated_runtime_minutes: 45\
+estimated_time_for_human: 50\
 \
 samples:\
   Hyp1:\
