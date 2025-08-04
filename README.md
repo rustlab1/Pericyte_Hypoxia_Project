@@ -1,4 +1,4 @@
-## Pericyte hypoxia RNA seq preprocessing and analysis
+# Pericyte hypoxia RNA seq preprocessing and analysis
 
 paper_title: Brain pericytes derived from human pluripotent stem cells retain vascular and phagocytic functions under hypoxia
 doi: 10.1101/2025.04.10.648232
@@ -14,7 +14,7 @@ downloads SRA runs, builds sample FASTQs, runs QC and trimming, aligns to GRCh38
 Analysis in R Markdown
 performs differential expression with DESeq2, PCA and volcano plots, a heatmap, and selected gene expression comparisons
 
-# 1. Data sources
+## 1. Data sources
 Public GEO GSE304315 and BioProject PRJNA1300358 human iPSC derived pericyte single end RNA seq
 
 Groups and runs used
@@ -29,14 +29,14 @@ Genome GRCh38 HISAT2 grch38_tran index
 
 Annotation GENCODE v44 GTF
 
-# 2. How to download
+## 2. How to download
 Install the tools with conda and fetch FASTQs from SRA using prefetch and fasterq dump. See workflow scripts for exact commands.
 
-# 3. Pre processing and subsampling
+## 3. Pre processing and subsampling
 No subsampling is applied by default. Raw FASTQs are used as is. The dataset includes hypoxia and normoxia pericyte samples.
 Quality control is performed with FastQC
 
-# 4. How the workflow works
+## 4. How the workflow works
 The shell script executes the following steps. Save your script and run it from a terminal. It creates and uses ./data_pre_processing.
 
 Step 1 Quality control
