@@ -9,7 +9,6 @@ q3:
   range: 24000–25000
 
 q4: 
-  exact: 187
-  range: 187–187
+  range: 0–200
 
-q5: VAX1
+q5:  CBFA2T3 or VAX1 or FUT3 or SLAMF9 or ENSG00000286404
