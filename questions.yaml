@@ -26,5 +26,5 @@ questions:
 
   - id: q5
     stage: differential_expression
-    text: "Which gene ranks 6th overall with a log2FC of approx 4.977 among the most upregulated genes in Hypoxia vs Normoxia?"
+    text: "Which gene ranks 6th overall with a log2FC among the most upregulated genes in Hypoxia vs Normoxia"
     answer_type: string_exact
