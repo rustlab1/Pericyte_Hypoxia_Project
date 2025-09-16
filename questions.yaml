@@ -1,37 +1,30 @@
->\
-  You have been given human pericyte bulk RNA-seq data comparing Hypoxia vs Normoxia\
-  (single-end, 4 samples: Hyp1, Hyp2, Norm1, Norm2). Using the provided FASTQs\
-  and the following pipeline (Trimmomatic 
-\f1 \uc0\u8594 
-\f0  HISAT2 
-\f1 \uc0\u8594 
-\f0  featureCounts 
-\f1 \uc0\u8594 
-\f0  DESeq2),\
-  answer the following:\
-\
-questions:\
-  - id: q1\
-    stage: read_processing\
-    text: "How many sequencing lanes were concatenated to form sample Hyp1?"\
-    answer_type: integer_exact\
-\
-  - id: q2\
-    stage: quality_control\
-    text: "What is the library size (total read counts) for sample Hyp2?"\
-    answer_type: integer_exact\
-\
-  - id: q3\
-    stage: quantification\
-    text: "How many genes have nonzero counts in sample Norm1?"\
-    answer_type: integer_exact\
-\
-  - id: q4\
-    stage: differential_expression\
-    text: "How many genes are upregulated \uc0\u8805 4-fold (log2FC \u8805  2) in Hypoxia vs Normoxia with FDR < 0.01?"\
-    answer_type: integer_exact\
-\
-  - id: q5\
-    stage: differential_expression\
-    text: "Which gene is ranked 5th by log2 fold change (most upregulated) in Hypoxia vs Normoxia?"\
-    answer_type: string_exact}
+You have been given human pericyte bulk RNA-seq data comparing Hypoxia vs Normoxia 
+(single-end, 4 samples: Hyp1, Hyp2, Norm1, Norm2). Using the provided FASTQs 
+and the following pipeline (Trimmomatic → HISAT2 → featureCounts → DESeq2), 
+answer the following:
+
+questions:
+  - id: q1
+    stage: read_processing
+    text: "How many sequencing lanes were concatenated to form sample Hyp1?"
+    answer_type: integer_exact
+
+  - id: q2
+    stage: quality_control
+    text: "What is the library size (total read counts) for sample Hyp2?"
+    answer_type: integer_exact
+
+  - id: q3
+    stage: quantification
+    text: "How many genes have nonzero counts in sample Norm1?"
+    answer_type: integer_exact
+
+  - id: q4
+    stage: differential_expression
+    text: "How many genes are upregulated ≥4-fold (log2FC ≥ 2) in Hypoxia vs Normoxia with FDR < 0.01?"
+    answer_type: integer_exact
+
+  - id: q5
+    stage: differential_expression
+    text: "Which gene ranks 6th overall with a log2FC of approx 4.977 among the most upregulated genes in Hypoxia vs Normoxia?"
+    answer_type: string_exact
